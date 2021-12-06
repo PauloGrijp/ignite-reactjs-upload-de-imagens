@@ -1,14 +1,39 @@
 import { Button, Box } from '@chakra-ui/react';
 import { useMemo } from 'react';
-import { useInfiniteQuery } from 'react-query';
+import { useInfiniteQuery, UseInfiniteQueryResult } from 'react-query';
 
+import { TriggerConfig } from 'react-hook-form';
+import PagesManifestPlugin from 'next/dist/build/webpack/plugins/pages-manifest-plugin';
 import { Header } from '../components/Header';
 import { CardList } from '../components/CardList';
 import { api } from '../services/api';
 import { Loading } from '../components/Loading';
 import { Error } from '../components/Error';
 
+interface Image {
+  id: string;
+  title: string;
+  description: string;
+  ts: number;
+  url: string;
+}
+
+interface GetImage {
+  after: string;
+  data: Image[];
+}
+
 export default function Home(): JSX.Element {
+  async function fetchImages({ pageParams = null }: any): Promise<GetImage> {
+    const { data } = await api('/api/images', {
+      params: {
+        after: pageParams,
+      },
+    });
+
+    return data;
+  }
+
   const {
     data,
     isLoading,
@@ -16,20 +41,20 @@ export default function Home(): JSX.Element {
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteQuery(
-    'images',
-    // TODO AXIOS REQUEST WITH PARAM
-    ,
-    // TODO GET AND RETURN NEXT PAGE PARAM
-  );
+  } = useInfiniteQuery('images', fetchImages, {
+    getNextPageParam: lastPage => lastPage?.after || null,
+  });
 
   const formattedData = useMemo(() => {
-    // TODO FORMAT AND FLAT DATA ARRAY
+    const formatted = data?.pages.flatMap(image => {
+      return image.data.flat();
+    });
+
+    return formatted;
   }, [data]);
 
-  // TODO RENDER LOADING SCREEN
-
-  // TODO RENDER ERROR SCREEN
+  if (isLoading && !isError) return <Loading />;
+  if (isLoading && isError) return <Error />;
 
   return (
     <>
